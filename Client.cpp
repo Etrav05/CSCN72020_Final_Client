@@ -12,7 +12,6 @@
 
 using namespace std;
 
-
 void delimiterFinder(char* buffer)
 {
     char delimiter = ',';
@@ -33,7 +32,6 @@ void delimiterFinder(char* buffer)
         i++;
     }
 }
-
 
 char* createMessage(char* authorBuffer, char* msgBuffer)
 {
@@ -73,22 +71,6 @@ void intMessageConversion(int i, SOCKET socket)
 
     send(socket, intString, strlen(intString), 0);
 }
-
-bool continueConversation()
-{
-    // Ask if user wants to continue
-    cout << "Send another message? (y/N): ";
-    char choice;
-    cin >> choice;
-
-    if (choice != 'y' && choice != 'Y')
-    {
-        return false;
-    }
-
-    return true;
-}
-
 
 int main()
 {
@@ -135,8 +117,6 @@ int main()
     // Send/Recv message loop
     while (talking)
     {
-        bool typing = true;
-
         int optionVal;
         cout << "Option (quit - 0, write - 1, read - 2): ";
         cin >> optionVal;
@@ -146,10 +126,13 @@ int main()
         switch (optionVal)
         {
         case 0: // Quit
-            return 0;
+        {
+            talking = false;
             break;
+        }
 
         case 1: // Write
+        {
             int messageCount;
             cout << "How many messages are in your collection? ";
             cin >> messageCount;
@@ -163,44 +146,53 @@ int main()
                 createMessage(authorBuffer, msgBuffer);
 
                 // Send message (Topic - Author - Body)
-                send(ClientSocket, msgBuffer, strlen(msgBuffer), 0);  // TODO: Is this one buffer or a collection of sends
+                send(ClientSocket, msgBuffer, strlen(msgBuffer), 0);
             }
             break;
+        }
 
         case 2: // Read
+        {
             int readCount;
             cout << "How many messages do you want to read? ";
             cin >> readCount;
 
             intMessageConversion(readCount, ClientSocket);
 
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Igonre the latest int input 
+            for (int i = 0; i < readCount; i++)
+            {
+                char rcBuffer[640] = { 0 };
+
+                // Recv message from server (Topic - Author - Body)
+                int bytesReceived = recv(ClientSocket, rcBuffer, sizeof(rcBuffer), 0);
+
+                if (bytesReceived > 0)
+                {
+                    rcBuffer[bytesReceived] = '\0'; // Null terminate
+                    cout << "Message " << (i + 1) << ": " << rcBuffer << endl;
+                }
+
+                else if (bytesReceived == 0)
+                {
+                    cout << "Server disconnected" << endl;
+                    return 0;
+                }
+
+                else
+                {
+                    cout << "ERROR: recv failed on message " << (i + 1) << endl;
+                    return 0;
+                }
+            }
+
             break;
+        }
 
         default:
+        {
             break;
         }
-
-
-        // Receive response using recv() for TCP
-        char rcBuffer[640] = {};
-        int msg = recv(ClientSocket, rcBuffer, sizeof(rcBuffer), 0);
-
-        if (msg > 0)
-        {
-            rcBuffer[msg] = '\0';
-            cout << "Server response: " << rcBuffer << endl;
-        }
-
-        else if (msg == 0)
-        {
-            cout << "Server disconnected" << endl;
-            talking = false;
-        }
-
-        else
-        {
-            cout << "ERROR: recv failed" << endl;
-            talking = false;
         }
     }
 
