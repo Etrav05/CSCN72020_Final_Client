@@ -12,6 +12,84 @@
 
 using namespace std;
 
+
+void delimiterFinder(char* buffer)
+{
+    char delimiter = ',';
+    char replacement = '\07';
+
+    char* charPtr = buffer;
+    int i = 0;
+
+    while (*charPtr != '\0')
+    {
+        if (*charPtr == delimiter)
+        {
+            buffer[i] = replacement;
+            // cout << "DEBUG - replaced at - " << i << endl;
+        }
+
+        charPtr++;
+        i++;
+    }
+}
+
+
+char* createMessage(char* authorBuffer, char* msgBuffer)
+{
+    // Get topic and message body from the user
+    char topicBuffer[64] = {};
+    cout << "Topic: ";
+    cin.getline(topicBuffer, 64);
+
+    if (topicBuffer[0] == '\0')
+    {
+        strcpy(topicBuffer, "none");
+    }
+
+    char bodyBuffer[512] = { "\0" };
+    cout << "Body: ";
+    cin.getline(bodyBuffer, 512);
+
+    delimiterFinder(topicBuffer);
+    delimiterFinder(bodyBuffer);
+
+
+    // Create combined message to send to server
+    strcpy(msgBuffer, topicBuffer);
+    strcat(msgBuffer, ",");          // Seperate sections with comma
+    strcat(msgBuffer, authorBuffer);
+    strcat(msgBuffer, ",");
+    strcat(msgBuffer, bodyBuffer);
+    cout << "DEBUG - Message: " << msgBuffer << endl;
+
+    return msgBuffer;
+}
+
+void intMessageConversion(int i, SOCKET socket)
+{
+    char intString[16];
+    sprintf(intString, "%d", i);
+
+    send(socket, intString, strlen(intString), 0);
+}
+
+bool continueConversation()
+{
+    // Ask if user wants to continue
+    cout << "Send another message? (y/N): ";
+    char choice;
+    cin >> choice;
+
+    if (choice != 'y' && choice != 'Y')
+    {
+        return false;
+    }
+
+    return true;
+}
+
+
 int main()
 {
     // Creating client socket
@@ -53,41 +131,54 @@ int main()
 
     cout << "Name is: " << authorBuffer << endl; // DEBUG
 
+
     // Send/Recv message loop
     while (talking)
     {
-        char optionBuffer[2] = { "\0" };
-        cout << "Option (quit - q, write - w, quit - q): ";
-        cin >> optionBuffer;
+        bool typing = true;
 
+        int optionVal;
+        cout << "Option (quit - 0, write - 1, read - 2): ";
+        cin >> optionVal;
 
-        // Get topic and message body from the user
-        char topicBuffer[64] = { "\0" };
-        cout << "Topic: ";
-        cin.getline(topicBuffer, 64);
+        intMessageConversion(optionVal, ClientSocket);
 
-        if (topicBuffer[0] == '\0')
+        switch (optionVal)
         {
-            strcpy(topicBuffer, "none");
+        case 0: // Quit
+            return 0;
+            break;
+
+        case 1: // Write
+            int messageCount;
+            cout << "How many messages are in your collection? ";
+            cin >> messageCount;
+
+            intMessageConversion(messageCount, ClientSocket);
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Igonre the latest int input 
+            for (int i = 0; i < messageCount; i++)
+            {
+                char msgBuffer[640];
+                createMessage(authorBuffer, msgBuffer);
+
+                // Send message (Topic - Author - Body)
+                send(ClientSocket, msgBuffer, strlen(msgBuffer), 0);  // TODO: Is this one buffer or a collection of sends
+            }
+            break;
+
+        case 2: // Read
+            int readCount;
+            cout << "How many messages do you want to read? ";
+            cin >> readCount;
+
+            intMessageConversion(readCount, ClientSocket);
+
+            break;
+
+        default:
+            break;
         }
-
-        char bodyBuffer[512] = { "\0" };
-        cout << "Body: ";
-        cin.getline(bodyBuffer, 512);
-
-
-        // Create combined message to send to server
-        char msgBuffer[640];
-        strcpy(msgBuffer, topicBuffer);
-        strcat(msgBuffer, ",");          // Seperate sections with comma
-        strcat(msgBuffer, authorBuffer);
-        strcat(msgBuffer, ",");
-        strcat(msgBuffer, bodyBuffer);
-        cout << "DEBUG - Message: " << msgBuffer << endl;
-
-
-        // Send message (Topic - Author - Body)
-        send(ClientSocket, msgBuffer, strlen(msgBuffer), 0);
 
 
         // Receive response using recv() for TCP
@@ -98,11 +189,6 @@ int main()
         {
             rcBuffer[msg] = '\0';
             cout << "Server response: " << rcBuffer << endl;
-
-            if (strcmp(rcBuffer, "x") == 0)
-            {
-                talking = false;
-            }
         }
 
         else if (msg == 0)
@@ -114,17 +200,6 @@ int main()
         else
         {
             cout << "ERROR: recv failed" << endl;
-            talking = false;
-        }
-
-
-        // Ask if user wants to continue
-        cout << "Send another message? (y/N): ";
-        char choice;
-        cin >> choice;
-
-        if (choice != 'y' && choice != 'Y')
-        {
             talking = false;
         }
     }
