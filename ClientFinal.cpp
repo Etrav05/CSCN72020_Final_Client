@@ -63,7 +63,7 @@ int main(void) {
 		//printf("Rx: %s", RxBuffer);
 
 		if (RxBuffer[0] == 'x')
-			break;
+			getInput = false;
 	}
 
 	close(ClientSocket);
