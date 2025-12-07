@@ -114,14 +114,14 @@ int main()
     cout << "Name is: " << authorBuffer << endl; // DEBUG
 
 
+    // Recive the servers welcome message
+    char welcomeBuffer[64] = { 0 };
+    recv(ClientSocket, welcomeBuffer, sizeof(welcomeBuffer), 0);
+    cout << welcomeBuffer << endl;
+
     // Send/Recv message loop
     while (talking)
     {
-        // Recive the servers welcome message
-        char welcomeBuffer[64] = { 0 };
-        recv(ClientSocket, welcomeBuffer, sizeof(welcomeBuffer), 0);
-        cout << welcomeBuffer << endl;
-
         int optionVal;
         cout << "Option (quit - 0, write - 1, read - 2): ";
         cin >> optionVal;
