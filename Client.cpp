@@ -117,6 +117,11 @@ int main()
     // Send/Recv message loop
     while (talking)
     {
+        // Recive the servers welcome message
+        char welcomeBuffer[64] = { 0 };
+        recv(ClientSocket, welcomeBuffer, sizeof(welcomeBuffer), 0);
+        cout << welcomeBuffer << endl;
+
         int optionVal;
         cout << "Option (quit - 0, write - 1, read - 2): ";
         cin >> optionVal;
@@ -153,13 +158,14 @@ int main()
 
         case 2: // Read
         {
-            int readCount;
-            cout << "How many messages do you want to read? ";
-            cin >> readCount;
+            char rcBuffer[64] = { 0 };
+            int bytesReceived = recv(ClientSocket, rcBuffer, sizeof(rcBuffer), 0);
 
-            intMessageConversion(readCount, ClientSocket);
+            rcBuffer[bytesReceived] = '\0';
+            int readCount = atoi(rcBuffer);
 
-            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Igonre the latest int input 
+            cout << "Reading " << readCount << " messages..." << endl;
+
             for (int i = 0; i < readCount; i++)
             {
                 char rcBuffer[640] = { 0 };
