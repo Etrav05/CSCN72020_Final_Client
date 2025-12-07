@@ -28,7 +28,7 @@ int main()
     sockaddr_in SvrAddr{};
     SvrAddr.sin_family = AF_INET;
     SvrAddr.sin_port = htons(27000);
-    SvrAddr.sin_addr.s_addr = inet_addr("172.16.5.50"); // Server address
+    SvrAddr.sin_addr.s_addr = inet_addr("172.16.5.12"); // Server address
 
     if ((connect(ClientSocket, (struct sockaddr*)&SvrAddr, sizeof(SvrAddr))) == SOCKET_ERROR)
     {
@@ -41,12 +41,13 @@ int main()
     cout << "Connected to server" << endl;
     bool talking = true;
 
-    // Set up author 1 time
-    char authorBuffer[64] = {};
+    // Set up the author 1 time
+    char authorBuffer[64] = { "\0" };
     cout << "Enter name here (or press Enter for anonymous): ";
     cin.getline(authorBuffer, 64); // Get line lets us detect "Enter" presses (rather than just cin >>)
 
-    if (authorBuffer[0] == '\0') {
+    if (authorBuffer[0] == '\0')
+    {
         strcpy(authorBuffer, "anonymous");
     }
 
@@ -55,13 +56,22 @@ int main()
     // Send/Recv message loop
     while (talking)
     {
-        // Get topic and message body from the user
-        char topicBuffer[64] = {};
-        char bodyBuffer[512] = {};
+        char optionBuffer[2] = { "\0" };
+        cout << "Option (quit - q, write - w, quit - q): ";
+        cin >> optionBuffer;
 
+
+        // Get topic and message body from the user
+        char topicBuffer[64] = { "\0" };
         cout << "Topic: ";
         cin.getline(topicBuffer, 64);
 
+        if (topicBuffer[0] == '\0')
+        {
+            strcpy(topicBuffer, "none");
+        }
+
+        char bodyBuffer[512] = { "\0" };
         cout << "Body: ";
         cin.getline(bodyBuffer, 512);
 
@@ -80,22 +90,28 @@ int main()
         send(ClientSocket, msgBuffer, strlen(msgBuffer), 0);
 
 
-        // Receive response
+        // Receive response using recv() for TCP
         char rcBuffer[640] = {};
         int msg = recv(ClientSocket, rcBuffer, sizeof(rcBuffer), 0);
 
-        if (msg > 0) 
+        if (msg > 0)
         {
             rcBuffer[msg] = '\0';
             cout << "Server response: " << rcBuffer << endl;
 
-            if (strcmp(rcBuffer, "x") == 0) // If the server enters 'x' to leave the conversation
+            if (strcmp(rcBuffer, "x") == 0)
             {
                 talking = false;
             }
         }
 
-        else 
+        else if (msg == 0)
+        {
+            cout << "Server disconnected" << endl;
+            talking = false;
+        }
+
+        else
         {
             cout << "ERROR: recv failed" << endl;
             talking = false;
@@ -105,9 +121,10 @@ int main()
         // Ask if user wants to continue
         cout << "Send another message? (y/N): ";
         char choice;
-        cin.getline(choice, 5);
+        cin >> choice;
 
-        if (choice != 'y' && choice != 'Y') {
+        if (choice != 'y' && choice != 'Y')
+        {
             talking = false;
         }
     }
