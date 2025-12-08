@@ -10,7 +10,50 @@
 #define SOCKET int
 #define SOCKET_ERROR -1
 
+#define AUTHOR_MAX_BUFFER 64
+#define TOPIC_MAX_BUFFER 64
+#define BODY_MAX_BUFFER 512
+
 using namespace std;
+
+void replaceBel(char* buffer)
+{
+    char delimiter = '\07';
+    char replacement = ',';
+
+    char* charPtr = buffer;
+    int i = 0;
+
+    while (*charPtr != '\0')
+    {
+        if (*charPtr == delimiter)
+        {
+            buffer[i] = replacement;
+            // cout << "DEBUG - replaced at - " << i << endl;
+        }
+
+        charPtr++;
+        i++;
+    }
+}
+
+void parsePost(char* msgIn, char topicOut[TOPIC_MAX_BUFFER], char authorOut[AUTHOR_MAX_BUFFER], char bodyOut[BODY_MAX_BUFFER]) {
+
+    strncpy(topicOut, strtok(msgIn, ","), TOPIC_MAX_BUFFER);
+    //strcmp for "", " "... , "\n"
+        //figure out what actually gets sent when someone just hits enter
+
+    strncpy(authorOut, strtok(NULL, ","), AUTHOR_MAX_BUFFER);
+    //strcmp ...
+
+    strncpy(bodyOut, strtok(NULL, ","), BODY_MAX_BUFFER);
+
+    replaceBel(topicOut);
+    replaceBel(bodyOut);
+
+    //strtok is not a trustworthy function (i think), but I forget how to use sscanf
+    return;
+}
 
 void delimiterFinder(char* buffer)
 {
@@ -36,9 +79,9 @@ void delimiterFinder(char* buffer)
 char* createMessage(char* authorBuffer, char* msgBuffer)
 {
     // Get topic and message body from the user
-    char topicBuffer[64] = {};
+    char topicBuffer[TOPIC_MAX_BUFFER] = {};
     cout << "Topic: ";
-    cin.getline(topicBuffer, 64);
+    cin.getline(topicBuffer, TOPIC_MAX_BUFFER);
 
     if (topicBuffer[0] == '\0')
     {
@@ -102,9 +145,9 @@ int main()
     bool talking = true;
 
     // Set up the author 1 time
-    char authorBuffer[64] = { "\0" };
+    char authorBuffer[AUTHOR_MAX_BUFFER] = { "\0" };
     cout << "Enter name here (or press Enter for anonymous): ";
-    cin.getline(authorBuffer, 64); // Get line lets us detect "Enter" presses (rather than just cin >>)
+    cin.getline(authorBuffer, AUTHOR_MAX_BUFFER); // Get line lets us detect "Enter" presses (rather than just cin >>)
 
     if (authorBuffer[0] == '\0')
     {
@@ -115,7 +158,7 @@ int main()
 
 
     // Recive the servers welcome message
-    char welcomeBuffer[64] = { 0 };
+    char welcomeBuffer[TOPIC_MAX_BUFFER] = { 0 };
     recv(ClientSocket, welcomeBuffer, sizeof(welcomeBuffer), 0);
     cout << welcomeBuffer << endl;
 
@@ -175,8 +218,15 @@ int main()
 
                 if (bytesReceived > 0)
                 {
-                    rcBuffer[bytesReceived] = '\0'; // Null terminate
-                    cout << "Message " << (i + 1) << ": " << rcBuffer << endl;
+                    char topicBuffer[TOPIC_MAX_BUFFER];
+                    char authorBuffer[AUTHOR_MAX_BUFFER];
+                    char bodyBuffer[BODY_MAX_BUFFER];
+
+                    parsePost(rcBuffer, topicBuffer, authorBuffer, bodyBuffer);
+
+                    cout << "Author: " << authorBuffer <<
+                        " - Topic: " << topicBuffer <<
+                        " - Message: " << bodyBuffer << endl;
                 }
 
                 else if (bytesReceived == 0)
